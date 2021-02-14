@@ -11,7 +11,10 @@ class BB:
 
     def __init__(self, db_pw, code=None, name=None, start_date=None, end_date=None):   
         pc = PriceCheck(db_pw)
-
+        if code is None:
+            for stockcode, stockname in pc.code_name_match.items():
+                if stockname == name:
+                    code = stockcode
         if name == None:
             name = pc.code_name_match[code]
         self.code = code
