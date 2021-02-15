@@ -29,7 +29,7 @@ class BB:
         indc_df['stdev'] = price_df.close.rolling(window=20).std()  # 20-day std
         indc_df['upperbb'] = indc_df.ma + 2 * indc_df.stdev
         indc_df['lowerbb'] = indc_df.ma - 2 * indc_df.stdev
-        indc_df['pb'] = (price_df.close - indc_df.lowerbb) / (indc_df.upperbb - indc_df.lowerbb)  # %B
+        indc_df['pb'] = (price_df.close - indc_df.lowerbb) / (indc_df.upperbb - indc_df.lowerbb)  # %B indicator
 
         # Calculate MFI(Money Flow Index)
         indc_df['tp'] = (price_df.low + price_df.close + price_df.high) / 3  # typical price
@@ -37,7 +37,7 @@ class BB:
         indc_df['nmf'] = indc_df.tp * price_df.volume  # negative money flow
 
         for index in range(1, len(indc_df)):
-            if price_df.volume.iloc[index] > price_df.volume.iloc[index-1]:
+            if indc_df.tp.iloc[index] > indc_df.tp.iloc[index-1]:
                 indc_df.nmf.iloc[index] = 0
             else:
                 indc_df.pmf.iloc[index] = 0
@@ -57,7 +57,7 @@ class BB:
         price_df = self.price_df
         indc_df = self.indc_df
 
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=(12, 6))
         plt.suptitle(f"Chart of {self.name}({self.code}) with Bollinger Band, 20 days, 2 std",
                      position=(0.5, 0.93), fontsize=15)
 
@@ -71,20 +71,22 @@ class BB:
         
         for index in indc_df.index:
             if indc_df.pb.loc[index] > 0.8 and indc_df.mfi.loc[index] > 80:
+                # buy
                 plt.plot(index, price_df.close.loc[index], 'r^')
             elif indc_df.pb.loc[index] < 0.2 and indc_df.mfi.loc[index] < 20:
+                # sell
                 plt.plot(index, price_df.close.loc[index], 'bv')
 
         # Lower chart: %B, MFI
         lower_chart = plt.subplot(212)
         ax1 = plt.subplot(lower_chart)
-        pb_plot = ax1.plot(indc_df.index, indc_df.pb, c='navy', linestyle='-', linewidth=1, label='%B')
+        pb_plot = ax1.plot(indc_df.index, indc_df.pb, c='darkcyan', linestyle='-', linewidth=1, label='%B')
         ax1.set_ylim(-0.3, 1.5)
         plt.axhline(y=0.8, color='0.5', linestyle='--', linewidth=1)
         plt.axhline(y=0.2, color='0.5', linestyle='--', linewidth=1)
 
         ax2 = ax1.twinx()
-        mfi_plot = ax2.plot(indc_df.index, indc_df.mfi, c='brown', linestyle='--', linewidth=1, label='MFI')
+        mfi_plot = ax2.plot(indc_df.index, indc_df.mfi, c='chocolate', linestyle='-', linewidth=1, label='MFI')
         ax2.set_ylim(-30, 150)
         
         plots = pb_plot + mfi_plot
@@ -98,5 +100,5 @@ class BB:
 
 if __name__ == '__main__':
     pw = '12357'
-    bb = BB(db_pw=pw, name='현대자동차', start_date='2019-01-01', end_date='2020-12-31')
+    bb = BB(db_pw=pw, name='삼성전자', start_date='2019-01-01', end_date='2020-12-31')
     bb.trend()
