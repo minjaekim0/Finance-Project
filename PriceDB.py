@@ -7,6 +7,7 @@ from tqdm import tqdm
 import pymysql
 from selenium import webdriver
 from bs4 import BeautifulSoup
+from ChartTool import x_axis_setting
 
 
 class PriceUpdate:
@@ -304,31 +305,9 @@ class PriceCheck:
         plt.suptitle(f"Candlestick Chart of {name}({code}) ({start_date} ~ {end_date})",
                      position=(0.5, 0.93), fontsize=15)
 
-        # Reflect input to x-axis
-        xticks = [0]
-        xlabels = [price_df.iloc[0].date]
-
-        last_row = price_df.iloc[0]
-        for index, row in enumerate(price_df.itertuples()):
-            if index == len(price_df) - 1:
-                break
-            if row.date.month != last_row.date.month:
-                xticks.append(index)
-                xlabels.append(f'{row.date.year}-{row.date.month:02d}')
-            last_row = row
-
-        xticks.append(len(price_df))
-        xlabels.append(price_df.iloc[-1].date)
-
-        if xticks[1] - xticks[0] < 5:
-            xlabels[1] = ''
-        if xticks[-1] - xticks[-2] < 5:
-            xlabels[-2] = ''
-
         # Upper chart: ohlc price
         price_plot = plt.subplot(gs[0])
-        price_plot.set_xticks(xticks)
-        price_plot.set_xticklabels([])
+        x_axis_setting(price_df.date, show_labels=False)
         plt.grid(color='gray', linestyle='-')
         plt.ylabel('ohlc candles')
 
@@ -382,8 +361,7 @@ class PriceCheck:
         # Lower chart: transaction volume
         # volume increase -> red / decrease -> blue
         volume_plot = plt.subplot(gs[1])
-        volume_plot.set_xticks(xticks)
-        volume_plot.set_xticklabels(xlabels, rotation=45, minor=False)
+        x_axis_setting(price_df.date, show_labels=True)
         plt.grid(color='gray', linestyle='-')
         plt.ylabel('volume')
 
@@ -421,8 +399,8 @@ class PriceCheck:
 if __name__ == '__main__':
     pw = '12357'
 
-    pu = PriceUpdate(pw)
-    pu.read_recent()
+    # pu = PriceUpdate(pw)
+    # pu.read_recent()
 
     pc = PriceCheck(pw)
     pc.candlestick(name='삼성전자', start_date='2020-11-01', end_date='2021-02-10')
