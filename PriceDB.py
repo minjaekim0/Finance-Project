@@ -7,7 +7,7 @@ from tqdm import tqdm
 import pymysql
 from selenium import webdriver
 from bs4 import BeautifulSoup
-from ChartTool import x_axis_setting
+from ChartTool import candlestick_chart
 
 
 class PriceUpdate:
@@ -274,127 +274,6 @@ class PriceCheck:
         price_df.index = price_df.date
         return price_df
 
-    # Show candlestick Chart
-    def candlestick(self, code=None, name=None, start_date=None, end_date=None):
-        # start_date default: one year ago, end_date default: today
-        if start_date is None:
-            one_year_ago = datetime.today() - timedelta(days=365)
-            start_date = one_year_ago.strftime('%Y-%m-%d')
-        if end_date is None:
-            end_date = datetime.today().strftime('%Y-%m-%d')
-
-        # User will input either code or name
-        # If input name, match code / else ok
-        if code is None:
-            for stockcode, stockname in self.code_name_match.items():
-                if stockname == name:
-                    code = stockcode
-        if name is None:
-            name = self.code_name_match[code]
-
-        price_df = self.get_price(code, name, start_date, end_date)
-
-        try:
-            rc('font', family='NanumGothic')
-            rcParams['axes.unicode_minus'] = False
-        except FileNotFoundError:
-            print("You should install 'NanumGothic' font.")
-
-        plt.figure(figsize=(12, 6), dpi=100)
-        gs = gridspec.GridSpec(nrows=2, ncols=1, height_ratios=[5, 2])
-        plt.suptitle(f"Candlestick Chart of {name}({code}) ({start_date} ~ {end_date})",
-                     position=(0.5, 0.93), fontsize=15)
-
-        # Upper chart: ohlc price
-        price_plot = plt.subplot(gs[0])
-        x_axis_setting(price_df.date, show_labels=False)
-        plt.grid(color='gray', linestyle='-')
-        plt.ylabel('ohlc candles')
-
-        ax = plt.subplot(price_plot)
-        for index, daily in enumerate(price_df.itertuples()):
-            width = 0.8
-            line_width = 0.08
-            if daily.close - daily.open != 0:
-                height = abs(daily.close - daily.open)
-            # Open and close price should appear on chart even if they are the same
-            else:
-                height = 10 ** (len(str(daily.close)) - 4)
-            line_height = (daily.high - daily.low)
-
-            if daily.close >= daily.open:
-                ax.add_patch(patches.Rectangle(
-                    (index + 0.5 * (1 - width), daily.open),
-                    width,
-                    height,
-                    facecolor='maroon',
-                    fill=True
-                ))
-                ax.add_patch(patches.Rectangle(
-                    (index + 0.5 * (1 - line_width), daily.low),
-                    line_width,
-                    line_height,
-                    facecolor='maroon',
-                    fill=True
-                ))
-            else:
-                ax.add_patch(patches.Rectangle(
-                    (index + 0.5 * (1 - width), daily.close),
-                    width,
-                    height,
-                    facecolor='navy',
-                    fill=True
-                ))
-                ax.add_patch(patches.Rectangle(
-                    (index + 0.5 * (1 - line_width), daily.low),
-                    line_width,
-                    line_height,
-                    facecolor='navy',
-                    fill=True
-                ))
-
-        min_price = min(price_df.low)
-        max_price = max(price_df.high)
-        gap = max_price - min_price
-        plt.axis([None, None, min_price - gap * 0.1, max_price + gap * 0.1])
-
-        # Lower chart: transaction volume
-        # volume increase -> red / decrease -> blue
-        volume_plot = plt.subplot(gs[1])
-        x_axis_setting(price_df.date, show_labels=True)
-        plt.grid(color='gray', linestyle='-')
-        plt.ylabel('volume')
-
-        ax = plt.subplot(volume_plot)
-        last_volume = 0
-        for index, daily in enumerate(price_df.itertuples()):
-            width = 0.8
-            height = daily.volume
-
-            if daily.volume >= last_volume:
-                ax.add_patch(patches.Rectangle(
-                    (index + 0.5 * (1 - width), 0),
-                    width,
-                    height,
-                    facecolor='maroon',
-                    fill=True
-                ))
-            else:
-                ax.add_patch(patches.Rectangle(
-                    (index + 0.5 * (1 - width), 0),
-                    width,
-                    height,
-                    facecolor='navy',
-                    fill=True
-                ))
-            last_volume = daily.volume
-
-        max_volume = max(price_df.volume)
-        plt.axis([None, None, 0, max_volume * 1.2])
-
-        plt.subplots_adjust(hspace=0.1)
-        plt.show()
-
 
 if __name__ == '__main__':
     pw = '12357'
@@ -403,4 +282,5 @@ if __name__ == '__main__':
     # pu.read_recent()
 
     pc = PriceCheck(pw)
-    pc.candlestick(name='삼성전자', start_date='2020-11-01', end_date='2021-02-10')
+    price_df = pc.get_price(name='SK하이닉스', start_date='2021-01-10', end_date='2021-02-19')
+    candlestick_chart(price_df)
