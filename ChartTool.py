@@ -8,10 +8,11 @@ from datetime import datetime, timedelta
 # Therefore, new x axis setting tool is needed.
 class x_axis_setting:
 
-    def __init__(self, dates, show_labels=True):
-        xticks = [-1]
-        xlabels = ['']
-            
+    def __init__(self, dates, setting=True, show_labels=True):
+        
+        xticks = []
+        xlabels = []
+        
         n = len(dates) // 10
         
         if n == 0:
@@ -29,23 +30,16 @@ class x_axis_setting:
                     else:
                         xlabels.append(date.strftime('%Y'))
         
-        xticks.append(len(dates))
-        xlabels.append('')
-        plt.gca().set_xticks(xticks)
+        if setting:
+            plt.gca().set_xticks(xticks)
 
-        if show_labels:
-            plt.gca().set_xticklabels(xlabels, rotation=45, minor=False)
-        else:
-            plt.gca().set_xticklabels([], rotation=45, minor=False)
+            if show_labels:
+                plt.gca().set_xticklabels(xlabels, rotation=45, minor=False)
+            else:
+                plt.gca().set_xticklabels([], rotation=45, minor=False)
 
         self.xticks = xticks
         self.xlabels = xlabels
-    
-    def xticks(self):
-        return self.xticks
-        
-    def xlabels(self):
-        return self.xlabels
 
 
 # Just add price bars(candlestick) at existing chart.
@@ -55,9 +49,7 @@ def price_bar(ax, price_df, up=None, down=None, show_labels=False):
     if down == None:
         down = 'b'
 
-    x_axis_setting(price_df.date, show_labels)
-    plt.grid(color='gray', linestyle='-')
-    plt.ylabel('ohlc candles')
+    x_axis_setting(price_df.date, True, show_labels)
 
     for index, daily in enumerate(price_df.itertuples()):
         width = 0.8
@@ -114,9 +106,7 @@ def volume_bar(ax, price_df, up=None, down=None, show_labels=True):
     if down == None:
         down = 'b'
     
-    x_axis_setting(price_df.date, show_labels)
-    plt.grid(color='gray', linestyle='-')
-    plt.ylabel('volume')
+    x_axis_setting(price_df.date, True, show_labels)
 
     last_volume = 0
     for index, daily in enumerate(price_df.itertuples()):
@@ -162,8 +152,15 @@ def candlestick_chart(price_df, up=None, down=None):
 
     price_plot = plt.subplot(gs[0])
     price_bar(price_plot, price_df, up, down, False)
+    plt.grid(color='gray', linestyle='-')
+    plt.ylabel('ohlc candles')
+    plt.axis([-0.5, len(price_df)-0.5, None, None])
+
     volume_plot = plt.subplot(gs[1])
     volume_bar(volume_plot, price_df, up, down, True)
+    plt.grid(color='gray', linestyle='-')
+    plt.ylabel('volume')
+    plt.axis([-0.5, len(price_df)-0.5, None, None])
 
     plt.subplots_adjust(hspace=0.1)
     plt.show()

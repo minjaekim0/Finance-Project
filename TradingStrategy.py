@@ -7,6 +7,7 @@ import seaborn as sns
 from datetime import datetime, timedelta
 import pymysql
 from PriceDB import PriceCheck
+from ChartTool import x_axis_setting, price_bar
 
 
 # Bollinger Band
@@ -27,8 +28,8 @@ class BB:
         indc = pd.DataFrame()  # indicator dataframe
         
         # Calcluate Bollinger Band
-        indc['ma'] = price.close.rolling(window=20).mean()  # 20-day moving average
-        indc['stdev'] = price.close.rolling(window=20).std()  # 20-day std
+        indc['ma'] = price.close.rolling(window=20, min_periods=1).mean()  # 20-day moving average
+        indc['stdev'] = price.close.rolling(window=20, min_periods=1).std()  # 20-day std
         indc['upperbb'] = indc.ma + 2 * indc.stdev
         indc['lowerbb'] = indc.ma - 2 * indc.stdev
 
@@ -46,14 +47,14 @@ class BB:
             else:
                 indc.pmf.iloc[index] = 0
         
-        indc['mfi'] = 100 - 100 / (1 + indc.pmf.rolling(window=10).sum()
-            / indc.nmf.rolling(window=10).sum())
+        indc['mfi'] = 100 - 100 / (1 + indc.pmf.rolling(window=10, min_periods=1).sum()
+            / indc.nmf.rolling(window=10, min_periods=1).sum())
         
         # Calculate II(Intraday Intensity), II%
         indc['ii'] = (2 * price.close - price.high - price.low) \
             / (price.high - price.low) * price.volume
-        indc['iip'] = indc.ii.rolling(window=21).sum() \
-            / price.volume.rolling(window=21).sum() * 100
+        indc['iip'] = indc.ii.rolling(window=21, min_periods=1).sum() \
+            / price.volume.rolling(window=21, min_periods=1).sum() * 100
 
         self.indc = indc.dropna()
         self.price = price.iloc[-len(self.indc):]
@@ -166,106 +167,62 @@ def triple_screen(db_pw, code=None, name=None, start_date=None, end_date=None):
         name = pc.code_name_match[code]
 
     plt.style.use('seaborn-darkgrid')
-    try:
-        rc('font', family='NanumGothic')
-        rcParams['axes.unicode_minus'] = False
-    except FileNotFoundError:
-        print("You should install 'NanumGothic' font.")
+    rc('font', family='NanumGothic')
+    rcParams['axes.unicode_minus'] = False
 
     price = pc.get_price(code, name, start_date, end_date)
     indc = pd.DataFrame()  # indicator dataframe
 
+    # macd
     indc['ema60'] = price.close.ewm(span=60).mean()  # exponential moving average, 12 weeks
     indc['ema130'] = price.close.ewm(span=130).mean()  # exponential moving average, 26 weeks
     indc['macd'] = indc.ema60 - indc.ema130  # moving average convergence divergence
     indc['signal'] = indc.macd.ewm(span=45).mean()
     indc['macd_hist'] = indc.macd - indc.signal
 
-    plt.figure(figsize=(12, 8))
+    # stochastic
+    highest = price.high.rolling(window=14, min_periods=1).max()
+    lowest = price.low.rolling(window=14, min_periods=1).min()
+    indc['pk'] = (price.close - lowest) / (highest - lowest) * 100  # %K
+    indc['pd'] = indc.pk.rolling(window=3, min_periods=1).mean()
+    
+    # Plotting
+    plt.figure(figsize=(14, 7))
     plt.suptitle(f"Triple Screen Trading: {name}({code})", position=(0.5, 0.93), fontsize=15)
-
-    # Reflect input to x-axis
-    xticks = [0]
-    xlabels = [price.iloc[0].date]
-
-    last_row = price.iloc[0]
-    for index, row in enumerate(price.itertuples()):
-        if index == len(price) - 1:
-            break
-        if row.date.month != last_row.date.month:
-            xticks.append(index)
-            xlabels.append(f'{row.date.year}-{row.date.month:02d}')
-        last_row = row
-
-    xticks.append(len(price))
-    xlabels.append(price.iloc[-1].date)
-
-    if xticks[1] - xticks[0] < 5:
-        xlabels[1] = ''
-    if xticks[-1] - xticks[-2] < 5:
-        xlabels[-2] = ''
 
     # First Screen
     first_screen = plt.subplot(311)
-    first_screen.set_xticks(xticks)
-    first_screen.set_xticklabels([])
-    
+    first_screen.grid(True)
     ax = plt.subplot(first_screen)
-    for index, daily in enumerate(price.itertuples()):
-        width = 1
-        line_width = 0.2
-        if daily.close - daily.open != 0:
-            height = abs(daily.close - daily.open)
-        # Open and close price should appear on chart even if they are the same
-        else:
-            height = 10 ** (len(str(daily.close)) - 4)
-        line_height = (daily.high - daily.low)
-
-        if daily.close >= daily.open:
-            ax.add_patch(patches.Rectangle(
-                (index + 0.5 * (1 - width), daily.open),
-                width,
-                height,
-                facecolor='maroon',
-                fill=True
-            ))
-            ax.add_patch(patches.Rectangle(
-                (index + 0.5 * (1 - line_width), daily.low),
-                line_width,
-                line_height,
-                facecolor='maroon',
-                fill=True
-            ))
-        else:
-            ax.add_patch(patches.Rectangle(
-                (index + 0.5 * (1 - width), daily.close),
-                width,
-                height,
-                facecolor='navy',
-                fill=True
-            ))
-            ax.add_patch(patches.Rectangle(
-                (index + 0.5 * (1 - line_width), daily.low),
-                line_width,
-                line_height,
-                facecolor='navy',
-                fill=True
-            ))
-
-    plt.plot(range(len(indc)), indc.ema130, c='darkcyan', linestyle='--', label='EMA130')
+    price_bar(ax, price, up='r', down='b', show_labels=False)
+    plt.plot(range(len(indc)), indc.ema130, c='darkcyan', label='EMA130')
     plt.legend()
 
-    min_price = min(price.low)
-    max_price = max(price.high)
-    gap = max_price - min_price
-    plt.axis([None, None, min_price - gap * 0.1, max_price + gap * 0.1])
+    # Buy / Sell
+    for i in range(len(price)):
+        if indc.ema130.iloc[i] < indc.ema130.iloc[i-1] and \
+            indc.pd.iloc[i-1] >= 20 and indc.pd.iloc[i] < 20:
+            plt.plot(i, price.close.iloc[i], c='maroon', marker='^')
+        elif indc.ema130.iloc[i] > indc.ema130.iloc[i-1] and \
+            indc.pd.iloc[i-1] <= 80 and indc.pd.iloc[i] > 80:
+            plt.plot(i, price.close.iloc[i], c='navy', marker='v')
 
     # Second Screen
     second_screen = plt.subplot(312)
-    
+    plt.plot(range(len(indc)), indc.macd, c='coral', label='MACD')
+    plt.plot(range(len(indc)), indc.signal, c='steelblue', label='MACD Signal')
+    plt.bar(range(len(indc)), indc.macd_hist, color='indigo', label='MACD Hist')
+    x_axis_setting(price.date, True, False)
+    plt.legend()
+
     # Third Screen
     third_screen = plt.subplot(313)
-    
+    plt.plot(range(len(indc)), indc.pk, c='olive', label='%K')
+    plt.plot(range(len(indc)), indc.pd, c='k', label='%D')
+    plt.axhline(y=20, color='0.5', linestyle='--', linewidth=1)
+    plt.axhline(y=80, color='0.5', linestyle='--', linewidth=1)
+    x_axis_setting(price.date, True, True)
+    plt.legend()
 
     plt.show()
 
@@ -273,5 +230,5 @@ def triple_screen(db_pw, code=None, name=None, start_date=None, end_date=None):
 if __name__ == '__main__':
     pw = '12357'
     # bb = BB(db_pw=pw, name='삼성전자', start_date='2019-01-01', end_date='2020-12-31')
-    # bb.reversal()
-    triple_screen(db_pw=pw, name='삼성전자', start_date='2019-01-01', end_date='2020-12-31')
+    # bb.trend()
+    triple_screen(db_pw=pw, name='포스코', start_date='2018-01-01', end_date='2021-02-20')
