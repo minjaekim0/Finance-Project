@@ -272,6 +272,12 @@ class PriceCheck:
               f"WHERE code = '{code}' and date >= '{start_date}' and date <= '{end_date}'"
         price_df = pd.read_sql(sql, self.connection)
         price_df.index = price_df.date
+
+        price_df['code'] = code
+        price_df['name'] = name
+        price_df['start_date'] = start_date
+        price_df['end_date'] = end_date
+
         return price_df
 
 

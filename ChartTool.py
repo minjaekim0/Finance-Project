@@ -147,11 +147,18 @@ def volume_bar(ax, price_df, up=None, down=None, show_labels=True):
 
 # Full candlestick chart
 def candlestick_chart(price_df, up=None, down=None):
+    code = price_df.code[0]
+    name = price_df.name[0]
+    start_date = price_df.start_date[0]
+    end_date = price_df.end_date[0]
+    
     rc('font', family='NanumGothic')
     rcParams['axes.unicode_minus'] = False
 
     plt.figure(figsize=(12, 6), dpi=100)
-    gs = gridspec.GridSpec(nrows=2, ncols=1, height_ratios=[5, 2])
+    plt.suptitle(f"{name}({code}) Candlestick Chart ({start_date} ~ {end_date})",
+                fontsize=15, position=(0.5, 0.93))
+    gs = gridspec.GridSpec(nrows=3, ncols=1, height_ratios=[5, 2, 0.3])
 
     price_plot = plt.subplot(gs[0])
     price_bar(price_plot, price_df, up, down, False)
