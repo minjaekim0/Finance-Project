@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib import gridspec, rc, rcParams
 import seaborn as sns
+from scipy.optimize import minimize
 from datetime import datetime, timedelta
 import pymysql
 from PriceDB import PriceCheck
@@ -227,8 +228,122 @@ def triple_screen(db_pw, code=None, name=None, start_date=None, end_date=None):
     plt.show()
 
 
+# Modern Portfolio Theory
+class MPT:
+    def __init__(self, db_pw, codes=None, names=None, start_date=None, end_date=None):
+        np.random.seed(0)
+        pc = PriceCheck(db_pw)
+        company_info = pc.code_name_match
+        if names == None:
+            names = [company_info[code] for code in codes]
+
+        self.names = names
+
+        close_df = pd.DataFrame()
+        for stock_name in names:
+            close_df[stock_name] = pc.get_price(name=stock_name, start_date=start_date, end_date=end_date).close
+        self.close_df = close_df
+
+        # Assume annual trading days are 250 days
+        daily_return = close_df.pct_change()
+        annual_return = daily_return.mean(axis=0) * 250
+        annual_cov = daily_return.cov() * 250
+        self.annual_return = annual_return
+        self.annual_cov = annual_cov
+
+        # Portfolios made randomly
+        portfolios_list = []
+
+        for index in range(10000):
+            weights = np.random.random(len(self.names))
+            weights = weights / sum(weights)
+            return_ = np.dot(weights, annual_return)
+            risk_ = np.sqrt(np.dot(weights.T, np.dot(annual_cov, weights)))
+            # Assume risk free interest rate = 0
+            Sharpe = return_ / risk_
+            temp_df = pd.DataFrame([[return_, risk_, weights, Sharpe]],
+                                columns=['return_', 'risk_', 'weights', 'Sharpe'])
+            portfolios_list.append(temp_df)
+
+        portfolios = pd.concat(portfolios_list, ignore_index=True)
+        self.portfolios = portfolios
+
+
+    def efficient_frontier(self):
+        annual_return = self.annual_return
+        annual_cov = self.annual_cov
+        portfolios = self.portfolios
+
+        return_range = np.linspace(min(portfolios.return_), max(portfolios.return_), 100)
+        efficient_list = []
+
+        def neg_sharpe(weights):
+            weights_return_ = np.dot(weights, annual_return)
+            weights_risk_ = np.sqrt(np.dot(weights.T, np.dot(annual_cov, weights)))
+            return - weights_return_ / weights_risk_
+
+        def sum_is_one(weights):
+            return sum(weights) - 1
+
+        number = len(portfolios.loc[0].weights)
+        init_weights = np.array([1 / number]) * number
+        bounds = [[0, 1]] * number
+
+        # 각 return 값들에 대해 minimize risk
+        for opt_return_ in return_range:
+            def return_constraint(weights):
+                return np.dot(weights, annual_return) - opt_return_
+            constraints = [{'type': 'eq', 'fun': sum_is_one},
+                        {'type': 'eq', 'fun': return_constraint}]
+            opt = minimize(neg_sharpe, init_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+            opt_weights = opt.x
+            opt_risk_ = np.sqrt(np.dot(opt_weights.T, np.dot(annual_cov, opt_weights)))
+            temp_df = pd.DataFrame([[opt_return_, opt_risk_, opt_weights, -opt.fun]],
+                                columns=['return_', 'risk_', 'weights', 'Sharpe'])
+            efficient_list.append(temp_df)
+        return pd.concat(efficient_list, ignore_index=True)
+    
+    def efficient_frontier_plot(self):
+        portfolios = self.portfolios
+        efficient_frontier = self.efficient_frontier()
+
+        rc('font', family='NanumGothic')
+        rcParams['axes.unicode_minus'] = False
+        
+        plt.figure()
+        plt.title(self.names)
+
+        plt.scatter(portfolios.risk_, portfolios.return_, c=portfolios.Sharpe,
+                    cmap=sns.color_palette('flare', as_cmap=True), s=5)
+        plt.plot(efficient_frontier.risk_, efficient_frontier.return_, c='k', linewidth=3)
+
+        lowest_risk_index = efficient_frontier.index[
+            efficient_frontier.risk_ == min(efficient_frontier.risk_)][0]
+        lowest_risk_ = efficient_frontier.loc[lowest_risk_index].risk_
+        return_at_lowest_risk_ = efficient_frontier.loc[lowest_risk_index].return_
+
+        plt.scatter(lowest_risk_, return_at_lowest_risk_, c='r', s=50, zorder=10)
+
+        for i, weight in enumerate(efficient_frontier.weights):
+            if i % 10 == lowest_risk_index % 10 and i >= lowest_risk_index:
+                plt.annotate([int(100 * r) for r in weight], \
+                    (efficient_frontier.risk_[i], efficient_frontier.return_[i]),
+                    xytext=(lowest_risk_ - 0.01 * len(names), efficient_frontier.return_[i] - 0.002))
+        
+        plt.axis([lowest_risk_ - 0.05, None, None, None])
+        plt.xlabel('Risk')
+        plt.ylabel('Return')
+        plt.show()
+
+
+
+
 if __name__ == '__main__':
     pw = '12357'
     # bb = BB(db_pw=pw, name='삼성전자', start_date='2019-01-01', end_date='2020-12-31')
     # bb.trend()
-    triple_screen(db_pw=pw, name='포스코', start_date='2018-01-01', end_date='2021-02-20')
+    
+    # triple_screen(db_pw=pw, name='포스코', start_date='2018-01-01', end_date='2021-02-20')
+    codes = ['000660', '005380', '035420', '035720']
+    mpt = MPT(db_pw=pw, codes=codes, start_date='2017-01-01', end_date='2020-12-31')
+    mpt.efficient_frontier_plot()
