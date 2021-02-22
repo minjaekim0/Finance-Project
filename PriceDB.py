@@ -288,5 +288,5 @@ if __name__ == '__main__':
     # pu.read_recent()
 
     pc = PriceCheck(pw)
-    price_df = pc.get_price(name='SK하이닉스', start_date='2021-01-10', end_date='2021-02-19')
+    price_df = pc.get_price(name='SK하이닉스', start_date='2021-01-01', end_date='2021-02-22')
     candlestick_chart(price_df)

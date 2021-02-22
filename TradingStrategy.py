@@ -340,10 +340,12 @@ class MPT:
 
 if __name__ == '__main__':
     pw = '12357'
+
     # bb = BB(db_pw=pw, name='삼성전자', start_date='2019-01-01', end_date='2020-12-31')
     # bb.trend()
     
     # triple_screen(db_pw=pw, name='포스코', start_date='2018-01-01', end_date='2021-02-20')
+    
     codes = ['000660', '005380', '035420', '035720']
     mpt = MPT(db_pw=pw, codes=codes, start_date='2017-01-01', end_date='2020-12-31')
     mpt.efficient_frontier_plot()
