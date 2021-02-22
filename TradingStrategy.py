@@ -13,7 +13,6 @@ from ChartTool import x_axis_setting, price_bar
 
 # Bollinger Band
 class BollingerBand:
-
     def __init__(self, db_pw, code=None, name=None, start_date=None, end_date=None):   
         pc = PriceCheck(db_pw)
         if code is None:
@@ -233,9 +232,9 @@ class ModernPortfolio:
     def __init__(self, db_pw, codes=None, names=None, start_date=None, end_date=None):
         np.random.seed(0)
         pc = PriceCheck(db_pw)
-        company_info = pc.code_name_match
+        code_name_match = pc.code_name_match
         if names == None:
-            names = [company_info[code] for code in codes]
+            names = [code_name_match[code] for code in codes]
 
         self.names = names
 
@@ -336,7 +335,93 @@ class ModernPortfolio:
         plt.show()
 
 
+# Dual Momentum
+class DualMomentum:
+    def __init__(self, db_pw):
+        self.db_pw = db_pw
+        pc = PriceCheck(db_pw)
+        self.code_name_match = pc.code_name_match
+        
+    def rel_momentum(self, start_date, end_date, number):
+        connection = pymysql.connect(
+            host='localhost', user='root', db='trading_db', password=self.db_pw, charset='utf8')
+        cursor = connection.cursor()
 
+        # Need exact prices at start & end
+        # Therefore find exact start & end date
+        cursor.execute(f"SELECT MIN(date) FROM daily_price WHERE date >= '{start_date}'")
+        start_date = cursor.fetchone()[0].strftime('%Y-%m-%d')
+        cursor.execute(f"SELECT MAX(date) FROM daily_price WHERE date <= '{end_date}'")
+        end_date = cursor.fetchone()[0].strftime('%Y-%m-%d')
+
+        # Relative Strength
+        return_list = []
+        cursor = connection.cursor()
+        for code in self.code_name_match.keys():
+            name = self.code_name_match[code]
+            cursor.execute(
+                f"SELECT close FROM daily_price WHERE code='{code}' and date='{start_date}'")
+            try:
+                fetch = cursor.fetchone()[0]
+                start_close = fetch
+            except:
+                continue
+
+            cursor.execute(
+                f"SELECT close FROM daily_price WHERE code='{code}' and date='{end_date}'")
+            try:
+                fetch = cursor.fetchone()[0]
+                end_close = fetch
+            except:
+                continue
+
+            temp_row = [code, name, start_close, end_close, (end_close / start_close - 1) * 100]
+            temp_df = pd.DataFrame([temp_row], columns=['code', 'name', 'start_close', 'end_close', 'return_'])
+            return_list.append(temp_df)
+        
+        return_df = pd.concat(return_list).sort_values(by='return_', ascending=False).reset_index(drop=True)
+        return return_df.head(number)
+        connection.close()
+
+    def abs_momentum(self, rel_momentum, start_date, end_date):
+        connection = pymysql.connect(
+            host='localhost', user='root', db='trading_db', password=self.db_pw, charset='utf8')
+        cursor = connection.cursor()
+
+        # Need exact prices at start & end
+        # Therefore find exact start & end date
+        cursor.execute(f"SELECT MIN(date) FROM daily_price WHERE date >= '{start_date}'")
+        start_date = cursor.fetchone()[0].strftime('%Y-%m-%d')
+        cursor.execute(f"SELECT MAX(date) FROM daily_price WHERE date <= '{end_date}'")
+        end_date = cursor.fetchone()[0].strftime('%Y-%m-%d')
+
+        return_list = []
+        cursor = connection.cursor()
+        for code, name in zip(rel_momentum.code, rel_momentum.name):
+            cursor.execute(
+                f"SELECT close FROM daily_price WHERE code='{code}' and date='{start_date}'")
+            try:
+                fetch = cursor.fetchone()[0]
+                start_close = fetch
+            except:
+                continue
+
+            cursor.execute(
+                f"SELECT close FROM daily_price WHERE code='{code}' and date='{end_date}'")
+            try:
+                fetch = cursor.fetchone()[0]
+                end_close = fetch
+            except:
+                continue
+
+            temp_row = [code, name, start_close, end_close, (end_close / start_close - 1) * 100]
+            temp_df = pd.DataFrame([temp_row], columns=['code', 'name', 'start_close', 'end_close', 'return_'])
+            return_list.append(temp_df)
+        
+        return_df = pd.concat(return_list).reset_index(drop=True)
+        return {'returns': return_df, 'avg_return': return_df.return_.mean()}
+        connection.close()
+        
 
 if __name__ == '__main__':
     pw = '12357'
@@ -346,6 +431,15 @@ if __name__ == '__main__':
     
     # TripleScreen(db_pw=pw, name='포스코', start_date='2018-01-01', end_date='2021-02-20')
     
-    codes = ['000660', '005380', '035420', '035720']
-    mpt = ModernPortfolio(db_pw=pw, codes=codes, start_date='2017-01-01', end_date='2020-12-31')
-    mpt.efficient_frontier_plot()
+    # codes = ['000660', '005380', '035420', '035720']
+    # mpt = ModernPortfolio(db_pw=pw, codes=codes, start_date='2017-01-01', end_date='2020-12-31')
+    # mpt.efficient_frontier_plot()
+
+    mtm = DualMomentum(db_pw=pw)
+    rel_mtm = mtm.rel_momentum(start_date='2019-07-01', end_date='2019-09-30', number=10)
+    abs_mtm = mtm.abs_momentum(rel_mtm, start_date='2019-10-01', end_date='2019-12-31')
+    
+    print('code / name / return_rel / return_abs')
+    for i in range(10):
+        print(f"{rel_mtm.code[i]} {rel_mtm.name[i]} {int(rel_mtm.return_[i])}% {int(abs_mtm['returns'].return_[i])}%")
+    print(f"\naverage_return = {abs_mtm['avg_return']:.2f}%\n")
