@@ -12,7 +12,7 @@ from ChartTool import x_axis_setting, price_bar
 
 
 # Bollinger Band
-class BB:
+class BollingerBand:
 
     def __init__(self, db_pw, code=None, name=None, start_date=None, end_date=None):   
         pc = PriceCheck(db_pw)
@@ -158,7 +158,7 @@ class BB:
 
 
 # Triple Screen Trading
-def triple_screen(db_pw, code=None, name=None, start_date=None, end_date=None):
+def TripleScreen(db_pw, code=None, name=None, start_date=None, end_date=None):
     pc = PriceCheck(db_pw)
     if code is None:
         for stockcode, stockname in pc.code_name_match.items():
@@ -229,7 +229,7 @@ def triple_screen(db_pw, code=None, name=None, start_date=None, end_date=None):
 
 
 # Modern Portfolio Theory
-class MPT:
+class ModernPortfolio:
     def __init__(self, db_pw, codes=None, names=None, start_date=None, end_date=None):
         np.random.seed(0)
         pc = PriceCheck(db_pw)
@@ -341,11 +341,11 @@ class MPT:
 if __name__ == '__main__':
     pw = '12357'
 
-    # bb = BB(db_pw=pw, name='삼성전자', start_date='2019-01-01', end_date='2020-12-31')
+    # bb = BollingerBand(db_pw=pw, name='삼성전자', start_date='2019-01-01', end_date='2020-12-31')
     # bb.trend()
     
-    # triple_screen(db_pw=pw, name='포스코', start_date='2018-01-01', end_date='2021-02-20')
+    # TripleScreen(db_pw=pw, name='포스코', start_date='2018-01-01', end_date='2021-02-20')
     
     codes = ['000660', '005380', '035420', '035720']
-    mpt = MPT(db_pw=pw, codes=codes, start_date='2017-01-01', end_date='2020-12-31')
+    mpt = ModernPortfolio(db_pw=pw, codes=codes, start_date='2017-01-01', end_date='2020-12-31')
     mpt.efficient_frontier_plot()
