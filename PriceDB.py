@@ -279,14 +279,3 @@ class PriceCheck:
         price_df['end_date'] = end_date
 
         return price_df
-
-
-if __name__ == '__main__':
-    pw = '12357'
-
-    # pu = PriceUpdate(pw)
-    # pu.read_recent()
-
-    pc = PriceCheck(pw)
-    price_df = pc.get_price(name='SK하이닉스', start_date='2021-01-01', end_date='2021-02-22')
-    candlestick_chart(price_df)

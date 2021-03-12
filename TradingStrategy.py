@@ -421,25 +421,3 @@ class DualMomentum:
         return_df = pd.concat(return_list).reset_index(drop=True)
         return {'returns': return_df, 'avg_return': return_df.return_.mean()}
         connection.close()
-        
-
-if __name__ == '__main__':
-    pw = '12357'
-
-    # bb = BollingerBand(db_pw=pw, name='삼성전자', start_date='2019-01-01', end_date='2020-12-31')
-    # bb.trend()
-    
-    # TripleScreen(db_pw=pw, name='포스코', start_date='2018-01-01', end_date='2021-02-20')
-    
-    # codes = ['000660', '005380', '035420', '035720']
-    # mpt = ModernPortfolio(db_pw=pw, codes=codes, start_date='2017-01-01', end_date='2020-12-31')
-    # mpt.efficient_frontier_plot()
-
-    mtm = DualMomentum(db_pw=pw)
-    rel_mtm = mtm.rel_momentum(start_date='2019-07-01', end_date='2019-09-30', number=10)
-    abs_mtm = mtm.abs_momentum(rel_mtm, start_date='2019-10-01', end_date='2019-12-31')
-    
-    print('code / name / return_rel / return_abs')
-    for i in range(10):
-        print(f"{rel_mtm.code[i]} {rel_mtm.name[i]} {int(rel_mtm.return_[i])}% {int(abs_mtm['returns'].return_[i])}%")
-    print(f"\naverage_return = {abs_mtm['avg_return']:.2f}%\n")
