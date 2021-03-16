@@ -1,5 +1,6 @@
-# .py files for test
 test.py
+chromedriver.exe
+.vscode/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
