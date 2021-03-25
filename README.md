@@ -1,3 +1,3 @@
 # Finance-Project
-- Build Package for Analysis on Financial Data
+- Build Package for Financial Data Analysis
 - Analyze about Financial Data
