@@ -327,7 +327,7 @@ class ModernPortfolio:
             if i % 10 == lowest_risk_index % 10 and i >= lowest_risk_index:
                 plt.annotate([int(100 * r) for r in weight], \
                     (efficient_frontier.risk_[i], efficient_frontier.return_[i]),
-                    xytext=(lowest_risk_ - 0.01 * len(names), efficient_frontier.return_[i] - 0.002))
+                    xytext=(lowest_risk_ - 0.01 * len(self.names), efficient_frontier.return_[i] - 0.002))
         
         plt.axis([lowest_risk_ - 0.05, None, None, None])
         plt.xlabel('Risk')
