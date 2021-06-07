@@ -279,7 +279,7 @@ class ModernPortfolio:
         def neg_sharpe(weights):
             weights_return_ = np.dot(weights, annual_return)
             weights_risk_ = np.sqrt(np.dot(weights.T, np.dot(annual_cov, weights)))
-            return - weights_return_ / weights_risk_
+            return - abs(weights_return_) / weights_risk_
 
         def sum_is_one(weights):
             return sum(weights) - 1
